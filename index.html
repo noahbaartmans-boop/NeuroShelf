@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NeuroShelf</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* GENERAL STYLES */
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:Roboto,sans-serif;background:transparent;color:#111;line-height:1.6;}
+.container{max-width:1200px;margin:0 auto;padding:24px;}
+h1,h2,h3{margin-bottom:12px;}
+p{margin-bottom:16px;}
+header{text-align:center;margin-bottom:40px;}
+header h1{font-size:36px;font-weight:700;}
+header p{font-size:18px;color:#555;}
+button{cursor:pointer;}
+.cta-btn{display:inline-block;background:#000;color:#fff;padding:12px 24px;text-decoration:none;font-weight:500;border-radius:4px;margin-top:12px;margin-right:8px;}
+nav{display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap;}
+nav button{padding:10px 16px;border:none;border-radius:8px;background:#2563eb;color:#fff;font-weight:500;}
+nav button.active{background:#16a34a;}
+.app-section{display:none;}
+.app-section.active{display:block;}
+/* GOALS STYLES */
+.add-goal, .add-subgoal, .import-export { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+input { flex: 1; padding: 12px; border-radius: 10px; border: 1px solid #e5e7eb; background: white; color: #111827; }
+button.secondary { background: #334155; }
+.goals-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
+.goal-card { background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); position: relative; }
+.goal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.goal-title { font-size: 18px; font-weight: 600; }
+.progress-container { background: #e5e7eb; border-radius: 8px; height: 12px; width: 100%; margin: 12px 0; }
+.progress-bar { background: #16a34a; height: 100%; border-radius: 8px; width: 0%; transition: width 0.3s; }
+.subgoals { margin-top: 12px; }
+.subgoal { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #1f2933; }
+.subgoal:last-child { border-bottom: none; }
+.subgoal.completed span { text-decoration: line-through; color: #6b7280; }
+.subgoal-buttons, .goal-delete-btn { display: none; }
+.editing .subgoal-buttons, .editing .goal-delete-btn { display: flex; gap: 6px; }
+.small { padding: 6px 10px; font-size: 12px; }
+.due-past { color: #dc2626; }      /* Red */
+.due-soon { color: #f97316; }      /* Orange */
+.due-future { color: #16a34a; }    /* Green */
+/* CHEMISTRY STYLES */
+.entry-card,.reaction-card{background:transparent;border:3px solid #000;padding:20px;max-width:900px;margin-bottom:20px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.reaction-header{display:flex;align-items:center;gap:16px;cursor:pointer}
+.reaction-header img{width:120px;border:2px solid #000}
+.reaction-name{font-weight:700;font-size:18px}
+.reaction-details{display:none;margin-top:12px}
+.reaction-details img{max-width:100%;border:2px solid #000;margin-top:8px}
+.card-actions{margin-left:auto;display:flex;gap:6px}
+.hidden{display:none}
+.step-input{margin-bottom:6px}
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>NeuroShelf</h1>
+  <p>Your all-in-one platform to organize your goals, master your studies, and nurture your mental well-being.</p>
+  <button id="loginBtn">Sign in with Google</button>
+  <button id="logoutBtn" style="display:none;">Sign Out</button>
+</header>
+
+<nav>
+  <button data-section="goals" class="active">Goals</button>
+  <button data-section="chemistry">Chemistry</button>
+  <button data-section="wellness">Wellness</button>
+</nav>
+
+<!-- SECTIONS -->
+<section id="goals" class="app-section active">
+  <div class="add-goal">
+    <input id="goalInput" placeholder="Type a new goal" />
+    <input type="date" id="goalDateInput" />
+    <button id="addGoalBtn">Add Goal</button>
+    <button id="editToggleBtn" class="small secondary">Edit</button>
+  </div>
+  <div class="import-export">
+    <button id="exportBtn" class="small">Export Goals</button>
+    <button id="importBtn" class="small">Import Goals</button>
+    <input type="file" id="importFileInput" style="display:none" accept="application/json" />
+  </div>
+  <div class="goals-grid" id="goalsGrid"></div>
+</section>
+
+<section id="chemistry" class="app-section">
+  <div class="toolbar">
+    <input id="searchInput" placeholder="Search" oninput="renderReactions()">
+    <button onclick="exportReactions()">Export</button>
+    <input type="file" id="importFile" style="display:none" onchange="importReactions(event)">
+    <button onclick="document.getElementById('importFile').click()">Import</button>
+  </div>
+  <button onclick="toggleAdd()">Add Reaction</button>
+  <div id="addSection" class="entry-card hidden">
+    <input id="nameInput" placeholder="Reaction name (required)">
+    <input id="reactionImgInput" type="file" accept="image/*">
+    <textarea id="descriptionInput" placeholder="Description (optional)"></textarea>
+    <input id="solventInput" placeholder="Solvent (optional)">
+    <textarea id="reagentsInput" placeholder="Reagents (optional)"></textarea>
+    <div id="stepsContainer"></div>
+    <button onclick="addStepInput()">Add Step</button>
+    <h3>Mechanism</h3>
+    <input id="mechanismImgInput" type="file" accept="image/*">
+    <button onclick="saveReaction()">Save</button>
+    <button onclick="cancelAdd()">Cancel</button>
+  </div>
+  <div id="reactionList"></div>
+</section>
+
+<section id="wellness" class="app-section">
+  <div class="shelf">
+    <section class="section">
+      <div class="section-icon">🛠️</div>
+      <h2>Develop Your Skills</h2>
+      <p>Build and strengthen skills that help you thrive. Track progress, practice routines, and enhance your abilities over time.</p>
+    </section>
+  </div>
+  <div class="shelf">
+    <section class="section">
+      <div class="section-icon">💡</div>
+      <h2>Value-Based Actions</h2>
+      <p>Translate your values into meaningful daily actions. Stay intentional, motivated, and aligned with what matters most to you.</p>
+    </section>
+  </div>
+  <div class="shelf">
+    <section class="section">
+      <div class="section-icon">💖</div>
+      <h2>Self-Care & Gratitude</h2>
+      <p>Maintain your mental and physical well-being. Reflect daily and cultivate mindfulness.</p>
+    </section>
+  </div>
+</section>
+
+</div>
+
+<!-- NAVIGATION SCRIPT -->
+<script>
+const tabs=document.querySelectorAll('nav button');
+const sections=document.querySelectorAll('.app-section');
+tabs.forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    tabs.forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active');
+    sections.forEach(s=>s.classList.remove('active'));
+    document.getElementById(tab.dataset.section).classList.add('active');
+  });
+});
+</script>
+
+<!-- FIREBASE -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+// Firebase config
+const firebaseConfig = {
+  apiKey: "AIzaSyBy0bhBeedlQ4B2a7cgEbKOn6E5_43DWuY",
+  authDomain: "neuroshelf-d8ee1.firebaseapp.com",
+  projectId: "neuroshelf-d8ee1",
+  storageBucket: "neuroshelf-d8ee1.appspot.com",
+  messagingSenderId: "319082537540",
+  appId: "1:319082537540:web:531ccdb917e7014e905211"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+// GOOGLE SIGN-IN
+const loginBtn = document.getElementById('loginBtn');
+const logoutBtn = document.getElementById('logoutBtn');
+
+loginBtn.addEventListener('click', ()=>{
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithRedirect(provider);
+});
+
+logoutBtn.addEventListener('click', ()=>{ auth.signOut(); });
+
+auth.onAuthStateChanged(user=>{
+  if(user){
+    loginBtn.style.display='none';
+    logoutBtn.style.display='inline-block';
+    loadGoals(user.uid);
+    loadReactions(user.uid);
+  } else {
+    loginBtn.style.display='inline-block';
+    logoutBtn.style.display='none';
+  }
+});
+</script>
+
+<!-- GOALS SCRIPT -->
+<script>
+let goals=[],editing=false;
+
+// UTILS
+function formatDueDate(dateStr){if(!dateStr)return'';const today=new Date();today.setHours(0,0,0,0);const due=new Date(dateStr);due.setHours(0,0,0,0);const diff=Math.round((due-today)/(1000*60*60*24));if(diff===0)return 'Today';if(diff===1)return 'Tomorrow';if(diff>1&&diff<14)return `In ${diff} days`;if(diff>=14){const w=Math.round(diff/7);return `In ${w} week${w>1?'s':''}`;}if(diff<0)return 'Past due';return'';}
+function getDueClass(dateStr){if(!dateStr)return'';const today=new Date();today.setHours(0,0,0,0);const due=new Date(dateStr);due.setHours(0,0,0,0);const diff=Math.round((due-today)/(1000*60*60*24));if(diff<0)return 'due-past';if(diff<=3)return 'due-soon';return 'due-future';}
+
+// GOALS FUNCTIONS
+document.getElementById('editToggleBtn').addEventListener('click',()=>{editing=!editing;render();});
+document.getElementById('addGoalBtn').addEventListener('click',addGoal);
+
+function addGoal(){
+  const title=document.getElementById('goalInput').value.trim();
+  const dueDate=document.getElementById('goalDateInput').value||null;
+  if(!title)return;
+  goals.push({id:Date.now()+Math.random(),title,dueDate,subgoals:[]});
+  document.getElementById('goalInput').value='';
+  document.getElementById('goalDateInput').value='';
+  saveGoals();
+  render();
+}
+
+function deleteGoal(id){goals=goals.filter(g=>g.id!==id);saveGoals();render();}
+function addSubgoal(goalId,textInput,dateInput){const text=textInput.value.trim();if(!text)return;const goal=goals.find(g=>g.id===goalId);goal.subgoals.push({id:Date.now(),text,dueDate:dateInput.value||null,completed:false});textInput.value='';dateInput.value='';saveGoals();render();}
+function toggleSubgoal(goalId,subgoalId){const goal=goals.find(g=>g.id===goalId);const sub=goal.subgoals.find(s=>s.id===subgoalId);sub.completed=!sub.completed;saveGoals();render();}
+function deleteSubgoal(goalId,subgoalId){const goal=goals.find(g=>g.id===goalId);goal.subgoals=goal.subgoals.filter(s=>s.id!==subgoalId);saveGoals();render();}
+function getGoalProgress(goal){if(goal.subgoals.length===0)return 0;const c=goal.subgoals.filter(s=>s.completed).length;return Math.round(c/goal.subgoals.length*100);}
+document.getElementById('exportBtn').addEventListener('click',()=>{const blob=new Blob([JSON.stringify(goals,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='goals.json';a.click();URL.revokeObjectURL(url);});
+document.getElementById('importBtn').addEventListener('click',()=>{document.getElementById('importFileInput').click();});
+document.getElementById('importFileInput').addEventListener('change',(e)=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const imported=JSON.parse(reader.result);if(Array.isArray(imported)){goals=imported;saveGoals();render();}else alert('Invalid JSON');}catch(e){alert('Error reading JSON');}};reader.readAsText(file);});
+function render(){const grid=document.getElementById('goalsGrid');grid.innerHTML='';goals.forEach(goal=>{const progress=getGoalProgress(goal);const card=document.createElement('div');card.className='goal-card';if(editing)card.classList.add('editing');card.innerHTML=`
+  <div class="goal-header">
+    <div class="goal-title ${getDueClass(goal.dueDate)}">${goal.title}${goal.dueDate? ' ('+formatDueDate(goal.dueDate)+')':''}</div>
+    <button class="small secondary goal-delete-btn" onclick="deleteGoal(${goal.id})">Delete</button>
+  </div>
+  <div class="progress-container">
+    <div class="progress-bar" style="width: ${progress}%;"></div>
+  </div>
+  <div class="subgoals">
+    <h4>Active Subgoals</h4>
+    ${goal.subgoals.filter(s=>!s.completed).map(s=>`
+      <div class="subgoal">
+        <span class="${getDueClass(s.dueDate)}">${s.text}${s.dueDate?' ('+formatDueDate(s.dueDate)+')':''}</span>
+        <div class="subgoal-buttons">
+          <button class="small" onclick="toggleSubgoal(${goal.id},${s.id})">Complete</button>
+          <button class="small secondary" onclick="deleteSubgoal(${goal.id},${s.id})">✕</button>
+        </div>
+      </div>
+    `).join('') || '<p style="color:#6b7280">No active subgoals</p>'}
+  </div>
+  <div class="subgoals" style="margin-top:12px">
+    <h4>Completed Subgoals</h4>
+    ${goal.subgoals.filter(s=>s.completed).map(s=>`
+      <div class="subgoal completed">
+        <span class="${getDueClass(s.dueDate)}">${s.text}${s.dueDate?' ('+formatDueDate(s.dueDate)+')':''}</span>
+        <div class="subgoal-buttons">
+          <button class="small" onclick="toggleSubgoal(${goal.id},${s.id})">Undo</button>
+          <button class="small secondary" onclick="deleteSubgoal(${goal.id},${s.id})">✕</button>
+        </div>
+      </div>
+    `).join('') || '<p style="color:#6b7280">No completed subgoals</p>'}
+  </div>
+  <div class="add-subgoal">
+    <input placeholder="Add subgoal" />
+    <input type="date" />
+    <button class="small" onclick="addSubgoal(${goal.id},this.previousElementSibling.previousElementSibling,this.previousElementSibling)">Add</button>
+  </div>
+`;grid.appendChild(card);});}
+
+// FIRESTORE STORAGE
+function saveGoals(){auth.currentUser && db.collection('users').doc(auth.currentUser.uid).set({goals},{merge:true});}
+function loadGoals(uid){db.collection('users').doc(uid).get().then(doc=>{if(doc.exists && doc.data().goals){goals=doc.data().goals;render();}});}
+
+document.addEventListener('DOMContentLoaded',()=>{render();});
+</script>
+
+<!-- CHEMISTRY SCRIPT -->
+<script>
+let reactions=[],editingId=null,currentReactionImg='',currentMechanismImg='';
+
+function toggleAdd(){document.getElementById('addSection').classList.toggle('hidden')}
+function cancelAdd(){clearForm(); toggleAdd(); editingId=null; currentReactionImg=''; currentMechanismImg='';}
+function addStepInput(value=''){const c=document.getElementById('stepsContainer');const i=document.createElement('input');i.type='text';i.placeholder='Step';i.className='step-input';i.value=value;c.appendChild(i);}
+function clearForm(){['nameInput','reactionImgInput','descriptionInput','solventInput','reagentsInput','mechanismImgInput'].forEach(id=>document.getElementById(id).value='');document.getElementById('stepsContainer').innerHTML='';currentReactionImg='';currentMechanismImg='';}
+function readImg(f){return new Promise(r=>{if(!f)return r('');const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(f)})}
+
+async function saveReaction(){
+ if(!nameInput.value.trim()){alert('Name is required!');return;}
+ if(!currentReactionImg && !reactionImgInput.files[0]){alert('Reaction image is required!');return;}
+ const steps=Array.from(document.querySelectorAll('#stepsContainer input')).map(i=>i.value.trim()).filter(Boolean);
+ if(reactionImgInput.files[0]) currentReactionImg=await readImg(reactionImgInput.files[0]);
+ if(mechanismImgInput.files[0]) currentMechanismImg=await readImg(mechanismImgInput.files[0]);
+ const r={id:editingId||Date.now().toString(),name:nameInput.value,reactionImg:currentReactionImg,description:descriptionInput.value,solvent:solventInput.value,reagents:reagentsInput.value,steps,mechanismImg:currentMechanismImg};
+ if(editingId){reactions=reactions.map(rx=>rx.id===editingId?r:rx);editingId=null;}else{reactions.push(r);}
+ saveReactions();renderReactions();clearForm();toggleAdd();
+}
+function deleteReaction(id){reactions=reactions.filter(r=>r.id!==id);saveReactions();renderReactions();}
+function editReaction(id){const r=reactions.find(r=>r.id===id);if(!r)return;editingId=id;toggleAdd();['nameInput','descriptionInput','solventInput','reagentsInput'].forEach(id=>document.getElementById(id).value=r[id]);currentReactionImg=r.reactionImg;currentMechanismImg=r.mechanismImg;document.getElementById('stepsContainer').innerHTML='';r.steps.forEach(s=>addStepInput(s));}
+function toggleDetails(el){const d=el.parentElement.querySelector('.reaction-details');d.style.display=d.style.display==='block'?'none':'block';}
+function renderReactions(){reactionList.innerHTML='';const q=searchInput.value.toLowerCase();reactions.forEach(r=>{if(q&&!r.name.toLowerCase().includes(q))return;const c=document.createElement('div');c.className='reaction-card';c.innerHTML=`
+  <div class="reaction-header" onclick="toggleDetails(this)">
+    <img src="${r.reactionImg}">
+    <div class="reaction-name">${r.name}</div>
+    <div class="card-actions">
+     <button class="outline" onclick="event.stopPropagation();editReaction('${r.id}')">Edit</button>
+     <button class="outline" onclick="event.stopPropagation();deleteReaction('${r.id}')">Delete</button>
+    </div>
+  </div>
+  <div class="reaction-details">
+    ${r.description?`<div><strong>Description:</strong>${r.description}</div>`:''}
+    ${r.solvent?`<div><strong>Solvent:</strong>${r.solvent}</div>`:''}
+    ${r.reagents?`<div><strong>Reagents:</strong>${r.reagents}</div>`:''}
+    ${r.steps.length?`<div><strong>Steps:</strong><ol>${r.steps.map(s=>`<li>${s}</li>`).join('')}</ol></div>`:''}
+    ${r.mechanismImg?`<div><strong>Mechanism:</strong><br><img src="${r.mechanismImg}">`:''}
+  </div>`;reactionList.appendChild(c);});
+}
+function saveReactions(){auth.currentUser && db.collection('users').doc(auth.currentUser.uid).set({reactions},{merge:true});}
+function loadReactions(uid){db.collection('users').doc(uid).get().then(doc=>{if(doc.exists){if(doc.data().reactions){reactions=doc.data().reactions;renderReactions();}}});}
+function exportReactions(){const blob=new Blob([JSON.stringify(reactions,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='reactions.json';a.click();}
+function importReactions(e){const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>{try{const imp=JSON.parse(ev.target.result);if(Array.isArray(imp)){reactions=imp;saveReactions();renderReactions();}else alert('Invalid file');}catch(err){alert('Error reading file');}};r.readAsText(file);}
+</script>
+
+</body>
+</html>
